@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Jessie Math - 公因數公倍數挑戰</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Fredoka+One&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --brand-primary: #2c3e50;
+            --brand-accent: #e67e22;
+            --bg-color: #f8f9fa;
+            --game-bg-top: #34495e;
+            --game-bg-bottom: #2c3e50;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: var(--bg-color);
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* --- 導覽列 --- */
+        header {
+            background: #ffffff;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+            padding: 10px 5%; /* 手機版縮小間距 */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 20;
+            height: 60px;
+            box-sizing: border-box;
+        }
+
+        .brand-logo {
+            font-family: 'Fredoka One', cursive;
+            font-size: 24px; /* 手機版字體稍小 */
+            color: var(--brand-primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .brand-logo i { color: var(--brand-accent); }
+
+        /* 手機版隱藏部分導覽連結，保持乾淨 */
+        .nav-menu { display: flex; gap: 15px; }
+        .nav-menu a {
+            text-decoration: none;
+            color: #7f8c8d;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
+        /* --- RWD 主容器 --- */
+        .container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 20px;
+            padding: 20px 5%;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* 左側遊戲區 */
+        .game-wrapper {
+            position: relative;
+            width: 800px; /* 電腦版預設寬度 */
+            height: 600px;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+            background: var(--game-bg-bottom);
+            flex-shrink: 0; /* 防止被擠壓 */
+        }
+
+        canvas { display: block; }
+
+        /* 右側資訊欄 */
+        .sidebar {
+            width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* --- 手機專用 (Mobile Only) --- */
+        /* 手機版頂部數據條 (預設隱藏，手機才顯示) */
+        #mobile-stats-bar {
+            display: none; 
+            width: 100%;
+            background: var(--brand-primary);
+            color: white;
+            padding: 8px 15px;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            border-radius: 8px 8px 0 0;
+            box-sizing: border-box;
+        }
+        .m-stat { font-weight: bold; }
+        .m-stat span { color: var(--brand-accent); margin-left: 5px; font-size: 18px; }
+
+        /* --- 媒體查詢 (Media Queries) 手機版樣式 --- */
+        @media (max-width: 900px) {
+            .container {
+                flex-direction: column; /* 改為直式排列 */
+                align-items: center;
+                padding: 10px;
+                gap: 15px;
+            }
+
+            .game-wrapper {
+                width: 100%; /* 寬度佔滿手機螢幕 */
+                height: auto; /* 高度自動或由 JS 控制 */
+                border-radius: 0 0 10px 10px; /* 上方圓角給數據條 */
+            }
+
+            .sidebar {
+                width: 100%; /* 側邊欄變為底部欄 */
+                order: 2; /* 移到遊戲下方 */
+            }
+
+            /* 手機版隱藏原本側邊的大數據卡，改用頂部條 */
+            .desktop-stats { display: none; }
+            #mobile-stats-bar { display: flex; } /* 顯示手機數據條 */
+            
+            /* 調整標題字體 */
+            h2 { font-size: 28px; }
+            .brand-logo { font-size: 20px; }
+        }
+
+        /* 卡片樣式 */
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            border-top: 4px solid var(--brand-primary);
+        }
+        .card-title { font-weight: bold; color: var(--brand-primary); margin-bottom: 10px; display:flex; justify-content:space-between;}
+
+        /* 排行榜 */
+        .rank-list { list-style: none; padding: 0; margin: 0; }
+        .rank-item { display: flex; padding: 8px 0; border-bottom: 1px dashed #eee; font-size: 14px; }
+        .rank-num { width: 20px; font-weight: bold; color: #999; }
+        .rank-name { flex: 1; color: #333; }
+        .rank-score { font-weight: bold; color: var(--brand-primary); }
+
+        /* --- 遊戲 UI 覆蓋層 --- */
+        .overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(44, 62, 80, 0.98);
+            color: white;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 10; text-align: center; padding: 20px; box-sizing: border-box;
+        }
+        .hidden { display: none !important; }
+
+        .btn-main {
+            background: var(--brand-accent); color: white; border: none;
+            padding: 12px 30px; font-size: 18px; border-radius: 50px;
+            cursor: pointer; font-weight: bold; margin-top: 15px;
+            box-shadow: 0 4px 10px rgba(230, 126, 34, 0.4);
+            transition: 0.2s;
+        }
+        .btn-main:active { transform: scale(0.95); }
+
+        /* 輸入框樣式 */
+        .settings-box { width: 100%; max-width: 300px; margin-bottom: 15px; }
+        .setting-group { margin-bottom: 10px; text-align: left; }
+        .setting-group label { display: block; font-size: 12px; color: #bdc3c7; margin-bottom: 4px; }
+        .setting-group input, .setting-group select {
+            width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #7f8c8d;
+            background: rgba(0,0,0,0.3); color: white; font-size: 16px; box-sizing: border-box;
+        }
+
+        /* 遊戲進行中的輸入條 */
+        .input-bar {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); padding: 8px 20px; border-radius: 50px;
+            display: flex; align-items: center; gap: 10px; width: 200px; justify-content: center;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        #answer-input {
+            background: transparent; border: none; border-bottom: 2px solid white;
+            color: white; font-size: 24px; width: 80%; text-align: center;
+            font-family: 'Fredoka One', sans-serif; outline: none;
+        }
+
+        footer { text-align: center; padding: 20px; color: #999; font-size: 12px; }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <a href="https://jessiemath0703-chu.github.io/website/" class="brand-logo">
+            <i class="fas fa-cube"></i> Jessie Math
+        </a>
+        <nav class="nav-menu">
+            <a href="https://jessiemath0703-chu.github.io/website/">首頁</a>
+            <a href="#">課程</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <div style="width: 100%; max-width: 800px;"> <div id="mobile-stats-bar">
+                <div class="m-stat">SCORE <span id="m-score">0</span></div>
+                <div class="m-stat" style="color:#aaa;"><i class="fas fa-clock"></i> <span id="m-time" style="color:white;">60</span>s</div>
+            </div>
+
+            <div class="game-wrapper">
+                <canvas id="game-canvas"></canvas>
+
+                <div id="input-ui" class="input-bar" style="display: none;">
+                    <input type="tel" pattern="\d*" id="answer-input" placeholder="?" autocomplete="off">
+                </div>
+
+                <button id="pause-btn" style="position: absolute; top: 15px; right: 15px; background:none; border:none; color:white; font-size:24px; cursor:pointer; opacity:0.7; padding: 10px;"><i class="fas fa-pause-circle"></i></button>
+
+                <div id="start-screen" class="overlay">
+                    <div style="font-size: 40px; color: var(--brand-accent);"><i class="fas fa-rocket"></i></div>
+                    <h2>因倍數挑戰</h2>
+                    <p class="desc" style="margin-bottom: 10px;">
+                        (a, b) = 最大公因數<br>[a, b] = 最小公倍數
+                    </p>
+                    
+                    <div class="settings-box">
+                        <div class="setting-group">
+                            <label>您的名字 / Name</label>
+                            <input type="text" id="start-player-name" placeholder="請輸入名字">
+                        </div>
+                        <div class="setting-group" style="display:flex; gap:10px;">
+                            <div style="flex:1;">
+                                <label>難度</label>
+                                <select id="diff-select">
+                                    <option value="NORMAL">標準</option>
+                                    <option value="EASY">入門</option>
+                                    <option value="HARD">挑戰</option>
+                                </select>
+                            </div>
+                            <div style="flex:1;">
+                                <label>速度</label>
+                                <select id="speed-select">
+                                    <option value="NORMAL">正常</option>
+                                    <option value="SLOW">慢速</option>
+                                    <option value="FAST">快速</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <button id="start-btn" class="btn-main">開始挑戰</button>
+                </div>
+
+                <div id="pause-screen" class="overlay hidden">
+                    <h2>PAUSED</h2>
+                    <button id="resume-btn" class="btn-main">繼續</button>
+                    <button id="quit-btn" style="margin-top: 20px; background: transparent; border: 1px solid white; color: white; padding: 8px 25px; border-radius: 50px;">結束</button>
+                </div>
+
+                <div id="gameover-screen" class="overlay hidden">
+                    <h2>GAME OVER</h2>
+                    <p>最終得分</p>
+                    <div style="font-size: 50px; font-weight: bold; color: var(--brand-accent);" id="final-score">0</div>
+                    <p id="record-msg" style="color: #74b9ff; font-size: 14px; margin-top: 10px;">成績已記錄！</p>
+                    <button id="retry-btn" class="btn-main">再玩一次</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <div class="card desktop-stats">
+                <div class="card-title"><i class="fas fa-chart-pie"></i> 目前狀態</div>
+                <div style="display: flex; justify-content: space-around; text-align: center; margin-top: 10px;">
+                    <div>
+                        <div style="font-size: 12px; color:#888;">SCORE</div>
+                        <div style="font-size: 24px; font-weight:bold; color:var(--brand-accent);" id="score-display">0</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 12px; color:#888;">TIME</div>
+                        <div style="font-size: 24px; font-weight:bold; color:#2c3e50;" id="time-display">60</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="flex: 1;">
+                <div class="card-title">
+                    <span><i class="fas fa-trophy"></i> 英雄榜</span>
+                    <i class="fas fa-trash-alt" onclick="clearLeaderboard()" style="cursor:pointer; color:#ccc; font-size:14px;"></i>
+                </div>
+                <ul class="rank-list" id="leaderboard-list">
+                    <li class="rank-item" style="color:#ccc; justify-content: center;">讀取中...</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <footer>&copy; 2025 Jessie Math. All Rights Reserved.</footer>
+
+    <script>
+        // --- 核心變數 ---
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 介面 DOM
+        const screens = {
+            start: document.getElementById('start-screen'),
+            pause: document.getElementById('pause-screen'),
+            gameover: document.getElementById('gameover-screen'),
+            input: document.getElementById('input-ui')
+        };
+        
+        // 顯示 DOM (包含手機與電腦版)
+        const displays = {
+            scorePC: document.getElementById('score-display'),
+            timePC: document.getElementById('time-display'),
+            scoreMobile: document.getElementById('m-score'),
+            timeMobile: document.getElementById('m-time'),
+            finalScore: document.getElementById('final-score'),
+            leaderboard: document.getElementById('leaderboard-list'),
+            recordMsg: document.getElementById('record-msg')
+        };
+
+        const inputs = {
+            answer: document.getElementById('answer-input'),
+            startName: document.getElementById('start-player-name'),
+            diff: document.getElementById('diff-select'),
+            speed: document.getElementById('speed-select')
+        };
+
+        let gameState = 'MENU'; 
+        let score = 0, timeLeft = 60;
+        let lastTime = 0, spawnTimer = 0;
+        let meteors = [], particles = [];
+        let timerInterval;
+        let currentPlayerName = "";
+        let settings = { difficulty: 'NORMAL', speedMode: 'NORMAL', speedMul: 1.0, spawnInt: 2000 };
+
+        const getCssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+        // --- RWD 畫布調整核心函數 ---
+        function resizeCanvas() {
+            // 取得容器寬度
+            const containerWidth = document.querySelector('.game-wrapper').clientWidth;
+            
+            // 設定畫布內部解析度
+            canvas.width = containerWidth;
+            
+            // 手機版高度稍微矮一點，電腦版維持 600
+            if (window.innerWidth < 900) {
+                canvas.height = window.innerHeight * 0.6; // 佔螢幕高度 60%
+            } else {
+                canvas.height = 600;
+            }
+        }
+
+        // 監聽螢幕旋轉或調整大小
+        window.addEventListener('resize', () => {
+            if(gameState === 'MENU') resizeCanvas();
+        });
+
+        // --- 數學邏輯 ---
+        const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
+        const lcm = (a, b) => (a * b) / gcd(a, b);
+
+        // --- 排行榜 ---
+        function updateLeaderboardUI() {
+            const data = JSON.parse(localStorage.getItem('jessieMathRanking') || '[]');
+            displays.leaderboard.innerHTML = '';
+            if (data.length === 0) {
+                displays.leaderboard.innerHTML = '<li class="rank-item" style="color:#ccc; justify-content: center;">尚無紀錄</li>';
+                return;
+            }
+            data.slice(0, 5).forEach((item, idx) => {
+                const li = document.createElement('li');
+                li.className = 'rank-item';
+                li.innerHTML = `<span class="rank-num">${idx+1}</span><span class="rank-name">${item.name}</span><span class="rank-score">${item.score}</span>`;
+                displays.leaderboard.appendChild(li);
+            });
+        }
+        function saveScore(name, score) {
+            const data = JSON.parse(localStorage.getItem('jessieMathRanking') || '[]');
+            data.push({ name: name, score: score });
+            data.sort((a, b) => b.score - a.score);
+            localStorage.setItem('jessieMathRanking', JSON.stringify(data));
+            updateLeaderboardUI();
+        }
+        function clearLeaderboard() {
+            if(confirm('確定清空？')) { localStorage.removeItem('jessieMathRanking'); updateLeaderboardUI(); }
+        }
+
+        // --- 遊戲物件 ---
+        class Meteor {
+            constructor() {
+                this.r = window.innerWidth < 600 ? 28 : 35; // 手機版球變小一點
+                // 確保生成在畫布寬度內
+                this.x = Math.random() * (canvas.width - 2 * this.r) + this.r;
+                this.y = -50;
+                
+                let baseSpd = settings.speedMode === 'SLOW' ? 0.6 : (settings.speedMode === 'FAST' ? 1.6 : 1.0);
+                this.speed = (Math.random() * 0.5 + 0.5) * baseSpd * settings.speedMul;
+
+                // 手機上如果螢幕短，速度稍微調慢一點點以示公平
+                if(canvas.height < 500) this.speed *= 0.8;
+
+                let isHard = settings.difficulty === 'HARD';
+                this.type = Math.random() > (isHard ? 0.5 : 0.4) ? 'GCD' : 'LCM';
+                this.genNumbers();
+            }
+
+            genNumbers() {
+                let range = settings.difficulty === 'EASY' ? [2, 6] : (settings.difficulty === 'NORMAL' ? [2, 10] : [3, 14]);
+                let mulRange = settings.difficulty === 'EASY' ? [1, 5] : [1, 9];
+                
+                if (this.type === 'GCD') {
+                    let c = Math.floor(Math.random() * (range[1]-range[0]) + range[0]);
+                    let m1 = Math.floor(Math.random() * (mulRange[1]-1) + 1);
+                    let m2 = Math.floor(Math.random() * (mulRange[1]-1) + 1);
+                    if(m1===m2) m2++;
+                    this.n1 = c*m1; this.n2 = c*m2;
+                    this.ans = gcd(this.n1, this.n2);
+                    this.color = '#e74c3c';
+                } else {
+                    this.n1 = Math.floor(Math.random() * (range[1]-range[0]) + range[0]);
+                    this.n2 = Math.floor(Math.random() * (range[1]-range[0]) + range[0]);
+                    if(this.n1===this.n2) this.n2++;
+                    let maxLcm = settings.difficulty === 'EASY' ? 40 : (settings.difficulty === 'NORMAL' ? 80 : 200);
+                    while(lcm(this.n1, this.n2) > maxLcm) {
+                        this.n1 = Math.floor(Math.random() * (range[1]-2) + 2);
+                        this.n2 = Math.floor(Math.random() * (range[1]-2) + 2);
+                    }
+                    this.ans = lcm(this.n1, this.n2);
+                    this.color = '#3498db';
+                }
+            }
+
+            update() { this.y += this.speed; }
+            
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.r, 0, Math.PI*2);
+                ctx.fillStyle = this.color; ctx.fill();
+                ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke();
+
+                ctx.fillStyle = 'white'; 
+                ctx.font = window.innerWidth < 600 ? 'bold 16px Arial' : 'bold 20px Arial';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                
+                let txt = this.type === 'GCD' ? `(${this.n1},${this.n2})` : `[${this.n1},${this.n2}]`;
+                ctx.fillText(txt, this.x, this.y);
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x; this.y = y; this.color = color;
+                this.vx = (Math.random()-0.5)*8; this.vy = (Math.random()-0.5)*8;
+                this.life = 1.0;
+            }
+            update() { this.x+=this.vx; this.y+=this.vy; this.life-=0.05; }
+            draw() {
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.fillStyle = this.color;
+                ctx.beginPath(); ctx.arc(this.x, this.y, 4, 0, Math.PI*2); ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        // --- 流程 ---
+        function init() {
+            resizeCanvas(); // 初始化時調整大小
+            updateLeaderboardUI();
+            
+            document.getElementById('start-btn').onclick = startGame;
+            document.getElementById('pause-btn').onclick = togglePause;
+            document.getElementById('resume-btn').onclick = togglePause;
+            document.getElementById('quit-btn').onclick = resetToMenu;
+            document.getElementById('retry-btn').onclick = resetToMenu;
+
+            window.onkeydown = (e) => {
+                if(e.key === 'Enter') {
+                    if (gameState === 'PLAYING') fire();
+                    if (gameState === 'MENU' && !screens.start.classList.contains('hidden')) startGame();
+                }
+            };
+            // 點擊畫布聚焦輸入框
+            canvas.onclick = () => { if(gameState==='PLAYING') inputs.answer.focus(); };
+            
+            // 手機版: 點擊遊戲區域任何地方都聚焦
+            document.querySelector('.game-wrapper').onclick = () => { if(gameState==='PLAYING') inputs.answer.focus(); };
+        }
+
+        function startGame() {
+            let nameVal = inputs.startName.value.trim();
+            if (!nameVal) { alert("請輸入名字！"); inputs.startName.focus(); return; }
+            currentPlayerName = nameVal;
+
+            settings.difficulty = inputs.diff.value;
+            settings.speedMode = inputs.speed.value;
+            settings.speedMul = 1.0;
+            settings.spawnInt = settings.speedMode === 'FAST' ? 1200 : 2000;
+
+            score = 0; timeLeft = 60;
+            meteors = []; particles = [];
+            updateStatsUI();
+            
+            // 確保畫布尺寸正確
+            resizeCanvas();
+
+            screens.start.classList.add('hidden');
+            screens.gameover.classList.add('hidden');
+            screens.input.style.display = 'flex';
+            inputs.answer.value = '';
+            inputs.answer.focus();
+            
+            gameState = 'PLAYING';
+            lastTime = performance.now();
+            requestAnimationFrame(loop);
+            
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if(gameState !== 'PLAYING') return;
+                timeLeft--;
+                updateStatsUI();
+                if(timeLeft % 10 === 0 && timeLeft > 0) {
+                    settings.speedMul += 0.1;
+                    settings.spawnInt = Math.max(500, settings.spawnInt - 150);
+                }
+                if(timeLeft <= 0) gameOver();
+            }, 1000);
+        }
+
+        function togglePause() {
+            if(gameState === 'PLAYING') {
+                gameState = 'PAUSED';
+                screens.pause.classList.remove('hidden');
+                inputs.answer.blur();
+            } else if(gameState === 'PAUSED') {
+                gameState = 'PLAYING';
+                screens.pause.classList.add('hidden');
+                lastTime = performance.now();
+                requestAnimationFrame(loop);
+                inputs.answer.focus();
+            }
+        }
+
+        function gameOver() {
+            gameState = 'GAMEOVER';
+            clearInterval(timerInterval);
+            screens.input.style.display = 'none';
+            screens.gameover.classList.remove('hidden');
+            displays.finalScore.innerText = score;
+            saveScore(currentPlayerName, score);
+            displays.recordMsg.innerText = `${currentPlayerName} 成績已登錄！`;
+        }
+
+        function resetToMenu() {
+            screens.pause.classList.add('hidden');
+            screens.gameover.classList.add('hidden');
+            screens.start.classList.remove('hidden');
+            gameState = 'MENU';
+            resizeCanvas(); // 回到選單時重置一下尺寸
+            ctx.fillStyle = getCssVar('--game-bg-bottom');
+            ctx.fillRect(0,0,canvas.width,canvas.height);
+        }
+
+        function loop(timestamp) {
+            if(gameState !== 'PLAYING') return;
+            let dt = timestamp - lastTime;
+            lastTime = timestamp;
+
+            ctx.clearRect(0,0,canvas.width, canvas.height); // 清空背景 (透明)
+            // 繪製背景色 (避免殘影)
+            let grad = ctx.createLinearGradient(0,0,0,canvas.height);
+            grad.addColorStop(0, getCssVar('--game-bg-top'));
+            grad.addColorStop(1, getCssVar('--game-bg-bottom'));
+            ctx.fillStyle = grad;
+            ctx.fillRect(0,0, canvas.width, canvas.height);
+
+            spawnTimer += dt;
+            if(spawnTimer > settings.spawnInt) {
+                meteors.push(new Meteor());
+                spawnTimer = 0;
+            }
+
+            for(let i=meteors.length-1; i>=0; i--) {
+                let m = meteors[i];
+                m.update();
+                m.draw();
+                if(m.y - m.r > canvas.height) {
+                    meteors.splice(i, 1);
+                    score = Math.max(0, score - 50);
+                    updateStatsUI();
+                    explode(m.x, canvas.height, '#fff');
+                }
+            }
+
+            for(let i=particles.length-1; i>=0; i--) {
+                let p = particles[i];
+                p.update();
+                p.draw();
+                if(p.life <= 0) particles.splice(i,1);
+            }
+            requestAnimationFrame(loop);
+        }
+
+        function fire() {
+            let val = parseInt(inputs.answer.value);
+            inputs.answer.value = '';
+            if(isNaN(val)) return;
+
+            let hit = false;
+            let sorted = [...meteors].sort((a,b)=>b.y - a.y);
+            
+            for(let m of sorted) {
+                if(m.ans === val) {
+                    hit = true;
+                    let pts = m.type === 'LCM' ? 150 : 100;
+                    if(settings.difficulty === 'HARD') pts *= 1.5;
+                    score += pts;
+                    explode(m.x, m.y, m.color);
+                    meteors.splice(meteors.indexOf(m), 1);
+                    break; 
+                }
+            }
+
+            if(!hit) {
+                score = Math.max(0, score - 30);
+                canvas.style.transform = 'translateX(5px)';
+                setTimeout(()=>canvas.style.transform='translateX(0)', 50);
+            }
+            updateStatsUI();
+        }
+
+        function explode(x, y, color) {
+            for(let i=0; i<10; i++) particles.push(new Particle(x,y,color));
+        }
+
+        function updateStatsUI() {
+            displays.scorePC.innerText = score;
+            displays.timePC.innerText = timeLeft;
+            displays.scoreMobile.innerText = score;
+            displays.timeMobile.innerText = timeLeft;
+        }
+
+        init();
+    </script>
+</body>
+</html>
